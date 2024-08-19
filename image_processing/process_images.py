@@ -1,7 +1,9 @@
 import cv2 as cv
 import numpy as np
 
-from utils import find_images
+from .utils import find_images
+
+from tasks.api_tasks import define_bcg_task
 
 
 def main():
@@ -10,7 +12,8 @@ def main():
 
 
 # Função principal de processamento de imagens
-def process_images(images_paths):
+@define_bcg_task
+async def process_images(images_paths):
     """
     Processa a imagem carregada, dividindo-a em partes e analisando cada parte.
     
@@ -85,8 +88,8 @@ def find_contours(img):
     # cv.imshow('Contornos', blank)
 
     sliced_contours = cv.bitwise_and(rs_img, rs_img, mask=blank)
-    # cv.imshow('Fios', sliced_contours)
-    # cv.waitKey(0)
+    cv.imshow('Fios', sliced_contours)
+    cv.waitKey(0)
 
     return sliced_contours
 
