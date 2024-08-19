@@ -7,21 +7,15 @@ from utils import find_images
 def main():
     images = find_images()
     results = process_images(images)
-    
-    for r in results:
-        # print(f"Parte {r['parte']}: Resultado da análise = {r['resultado']}")
-        print(type(r))
 
 
 # Função principal de processamento de imagens
-def process_images(images_paths, num_linhas=2, num_colunas=2):
+def process_images(images_paths):
     """
     Processa a imagem carregada, dividindo-a em partes e analisando cada parte.
     
     :param images_path: Lista de caminhos das imagens a serem processadas.
-    :param num_linhas: Número de linhas para dividir a imagem.
-    :param num_colunas: Número de colunas para dividir a imagem.
-    :return: Resultados da análise de cada parte da imagem.
+    :return: As imagens processadas como um array numpy.
     """
     if not images_paths:
         raise ValueError("Imagem não encontrada ou caminho inválido.")
@@ -32,93 +26,77 @@ def process_images(images_paths, num_linhas=2, num_colunas=2):
         img = cv.imread(path)
         pre_processed_img = pre_process_image(img)
         
-        contours, _ = cv.findContours(
-            pre_processed_img, 
-            cv.RETR_LIST, 
-            cv.CHAIN_APPROX_SIMPLE
-        )
-        contours_array = np.array(contours, dtype=object)
-        
-        processed_images.append(contours)
-    
-    # Dividir a imagem em partes
-    # divided_images = divide_images(images, num_linhas, num_colunas)
-    
-    # Analisar cada parte da imagem
-    # results = []
-
-    # for image_nuber, parts in enumerate(divided_images):
-    #     for i, part in enumerate(parts):
-    #         result = analise_part(part)
-    #         results.append({
-    #             "imagem": image_nuber + 1,
-    #             "parte": i + 1,
-    #             "resultado": result
-    #         })
+        processed_images.append(pre_processed_img)
     
     return processed_images
 
 
 def pre_process_image(img):
+    ## Analises a serem feitas:
+
+    # Detecção de Componentes Específicos
+    # Segmentação por Cor
+    # Detecção de Textura
+    # Reconhecimento de Padrões
+    # Medidas de Dimensões
+    
+    # Detecção de Bordas e Linhas
+    contours = find_contours(img)
+    filtered_contours = filter_contours(contours)
+    
+    # Detecção de Objetos e Classificação
+    # Análise de Formas e Estruturas
+
+
+def find_contours(img):
     width = int(img.shape[1] * 0.4)
     height = int(img.shape[0] * 0.4)
     dimensions = (width, height)
+
     rs_img = cv.resize(img, dimensions, cv.INTER_AREA)
     # cv.imshow('Secador', rs_img)
-
-    # blank = np.zeros(rs_img.shape, dtype='uint8')
+    blank = np.zeros(rs_img.shape[:2], dtype='uint8')
     gray = cv.cvtColor(rs_img, cv.COLOR_BGR2GRAY)
-    ret, thresh = cv.threshold(gray, 70, 200, cv.THRESH_BINARY)
+    
+    # cv.imshow('Secador', img)
+    # blank = np.zeros(img.shape[:2], dtype='uint8')
+    # gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+
+    # cv.imshow('Cinza', gray)
+
+    # blurred = cv.GaussianBlur(gray, (5, 5), 0)
+    # cv.imshow('Borrado', blurred)
+
+    edges = cv.Canny(gray, 100, 200)
+    # cv.imshow('Pontas', edges)
+
+    # dilated = cv.dilate(edges, None, iterations=1)
+    # cv.imshow('Dilatado', dilated)
+
+    # eroded = cv.erode(dilated, None, iterations=1)
+    # cv.imshow('Erodido', eroded)
+
+    # ret, thresh = cv.threshold(gray, 70, 200, cv.THRESH_BINARY)
     # canny = cv.Canny(gray, 110, 175)
     
     # cv.imshow('Thresh', thresh)
-    # contours, hierarchies = cv.findContours(thresh, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
-    # cv.drawContours(blank, contours, -1, (0, 0, 255), 1)
+    contours, hierarchies = cv.findContours(edges, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
+    cv.drawContours(blank, contours, -1, (255), 1)
     # cv.imshow('Contornos', blank)
+
+    sliced_contours = cv.bitwise_and(rs_img, rs_img, mask=blank)
+    # cv.imshow('Fios', sliced_contours)
     # cv.waitKey(0)
 
-    return thresh
+    return sliced_contours
 
 
-# Função para dividir a imagem em várias partes
-def divide_images(images, num_linhas, num_colunas):
-    """
-    Divide as imagens em partes menores.
-    
-    :param images: Imagens carregada pelo OpenCV.
-    :param num_linhas: Número de linhas de divisão.
-    :param num_colunas: Número de colunas de divisão.
-    :return: Lista de partes da imagem.
-    """
-    divided_images = []
+def filter_contours(contours):
+    filtered_contours = []
 
-    for image in images:
-        altura, largura, _ = image.shape
-        altura_parte = altura // num_linhas
-        largura_parte = largura // num_colunas
-        
-        parts = []
-        for i in range(num_linhas):
-            for j in range(num_colunas):
-                parte = image[i*altura_parte:(i+1)*altura_parte, j*largura_parte:(j+1)*largura_parte]
-                parts.append(parte)
-        
-        divided_images.append(parts)
-    
-    return divided_images
+    ## Implementar função para filtrar os contornos
 
-
-# Função para analisar uma parte da imagem (exemplo básico)
-def analise_part(part):
-    """
-    Realiza uma análise simples em uma parte da imagem.
-    
-    :param part: Parte da imagem a ser analisada.
-    :return: Resultado da análise (ex: média dos pixels).
-    """
-    # Exemplo: calcular a média dos valores dos pixels
-    media = np.mean(part)
-    return media
+    return filtered_contours if filtered_contours else contours
 
 
 # Exemplo de uso
