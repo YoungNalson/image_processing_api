@@ -1,4 +1,7 @@
 from celery import Celery
+import redis
+
+redis_client = redis.Redis(host='localhost')
 
 # Configuração do Celery
 celery_app = Celery(

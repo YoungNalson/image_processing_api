@@ -1,31 +1,27 @@
 from fastapi import APIRouter, HTTPException
 from image_processing.utils import find_images
 from tasks.api_tasks import watch_process, process_images
-from typing import Dict
+from api.celery_config import redis_client
 
 router = APIRouter()
-
-# Dicionário para armazenar o estado do processo
-process_states: Dict[str, bool] = {
-    'image_processing': False,
-    'image_processing_task': ''
-}
 
 
 @router.get("/process")
 def start_process_images():
-    print(process_states['image_processing'])
-    if process_states['image_processing']:
+    image_processing = redis_client.get('image_processing')
+
+    if image_processing and image_processing.decode('utf-8') == 'True':
         return {"status": "Process is already running"}
 
     try:
         images_paths = find_images()
         task = process_images.delay(images_paths)
 
-        process_states['image_processing'] = True
-        process_states['image_processing_task'] = task.id
+        # Atualiza o estado no Redis
+        redis_client.set('image_processing', 'True')
+        redis_client.set('image_processing_task', task.id)
         
-        watch_process.delay(task.id, process_states)
+        watch_process.delay(task.id)
         
         return {"message": "Image processing started successfully"}
     except Exception as e:
