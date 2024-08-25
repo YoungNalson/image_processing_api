@@ -1,7 +1,12 @@
-import cv2 as cv
+import cv2
 import numpy as np
+import matplotlib.pyplot as plt
+# from copy import deepcopy
+# import base64
+# import io
+import math
 
-from .utils import find_images
+from utils import find_images
 
 
 
@@ -22,84 +27,121 @@ def process_images(images_paths):
         raise ValueError("Imagem não encontrada ou caminho inválido.")
     
     # Carregar as imagens
-    processed_images = []
+    images_paths = sorted(images_paths)
     for path in images_paths:
-        img = cv.imread(path)
-        pre_processed_img = pre_process_image(img)
-        
-        processed_images.append(pre_processed_img)
+        img = cv2.imread(path)
+        base = crop_base(img)
+
+
+def crop_base(img):
+    # Imagem RGB
+    # img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    # Imagem HSV
+    img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     
-    return processed_images
+    points = find_points(img_hsv)
+
+    # draw_lines(img_rgb, points)
+    # plt.imshow(img_rgb)
+    # plt.savefig('cantosEncontrados.png')
+
+    img_rotated = rotate_img(img, points)
+
+    # plt.imshow(cv2.cvtColor(img_rotated, cv2.COLOR_BGR2RGB))
+    # plt.savefig('imagemEndireitada.png')
+
+    img_rotated_hsv = cv2.cvtColor(img_rotated, cv2.COLOR_BGR2HSV)
+
+    rotated_points = find_points(img_rotated_hsv, 'mask2.png')
+
+    # Criar uma máscara para recortar a imagem
+    pts = np.array(rotated_points, dtype=np.float32)
+    rect = cv2.boundingRect(pts)
+    x, y, w, h = rect
+    cropped_image = img_rotated[y:y+h, x:x+w]
+
+    # plt.imshow(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB))
+    # plt.savefig('imagemRecortada')
+    return cropped_image
 
 
-def pre_process_image(img):
-    ## Analises a serem feitas:
+def find_points(img_hsv, file_name:str='mask.png'):
+    # Definir o intervalo de cor para o vermelho
+    lower_red = np.array([160, 100, 100])
+    upper_red = np.array([180, 255, 255])
 
-    # Detecção de Componentes Específicos
-    # Segmentação por Cor
-    # Detecção de Textura
-    # Reconhecimento de Padrões
-    # Medidas de Dimensões
+    mask = cv2.inRange(img_hsv, lower_red, upper_red)
     
-    # Detecção de Bordas e Linhas
-    contours = find_contours(img)
-    filtered_contours = filter_contours(contours)
+    # plt.imshow(mask)
+    # plt.savefig(file_name)
+
+    # Encontrar contornos que correspondem à máscara
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    points = []
+    for contour in contours:
+        if cv2.contourArea(contour) > 100:  # Filtrar contornos pequenos
+            M = cv2.moments(contour)
+            if M["m00"] != 0:
+                cX = int(M["m10"] / M["m00"])
+                cY = int(M["m01"] / M["m00"])
+                points.append((cX, cY))
     
-    # Detecção de Objetos e Classificação
-    # Análise de Formas e Estruturas
+    # Verificar se encontrou quatro pontos
+    if len(points) == 4:
+        # Ordenar pontos para formar um retângulo
+        points = sort_points(points)
+
+    return points
 
 
-def find_contours(img):
-    width = int(img.shape[1] * 0.4)
-    height = int(img.shape[0] * 0.4)
-    dimensions = (width, height)
+def sort_points(points):
+    sorted_points = []
+    center_x = sum(p[0] for p in points) / len(points)
+    center_y = sum(p[1] for p in points) / len(points)
 
-    rs_img = cv.resize(img, dimensions, cv.INTER_AREA)
-    # cv.imshow('Secador', rs_img)
-    blank = np.zeros(rs_img.shape[:2], dtype='uint8')
-    gray = cv.cvtColor(rs_img, cv.COLOR_BGR2GRAY)
+    def angulo_em_relacao_ao_centro(point):
+        return np.arctan2(point[1] - center_y, point[0] - center_x)
+
+    points.sort(key=angulo_em_relacao_ao_centro)
+
+    # Dividir em quadrantes para identificar os quatro pontos
+    sorted_points = [
+        min(points, key=lambda p: (p[0] + p[1])),  # superior esquerdo
+        min(points, key=lambda p: (p[0] - p[1])),  # superior direito
+        max(points, key=lambda p: (p[0] + p[1])),  # inferior direito
+        max(points, key=lambda p: (p[0] - p[1]))   # inferior esquerdo
+    ]
+
+    return sorted_points
+
+
+def draw_lines(img_rgb, points):
+    for i in range(len(points)):
+        cv2.line(img_rgb, points[i], points[(i+1) % 4], (0, 0, 255), 10)
+
+
+def rotate_img(img, pontos):
+    # Pontos da linha de baixo (inferior esquerda e inferior direita)
+    ponto_inferior_esquerdo = pontos[1]
+    ponto_inferior_direito = pontos[2]
+
+    # Calcular o ângulo da linha em relação ao eixo horizontal
+    delta_x = ponto_inferior_direito[0] - ponto_inferior_esquerdo[0]
+    delta_y = ponto_inferior_direito[1] - ponto_inferior_esquerdo[1]
+    angle = math.degrees(math.atan2(delta_y, delta_x))
+
+    height, width = img.shape[:2]
+
+    # Calcular a matriz de rotação
+    center = (height // 2, width // 2)
+    rotating_matriz = cv2.getRotationMatrix2D(center, angle, 1.0)
+
+    # Rotacionar a imagem
+    img_rotated = cv2.warpAffine(img, rotating_matriz, (width, height))
     
-    # cv.imshow('Secador', img)
-    # blank = np.zeros(img.shape[:2], dtype='uint8')
-    # gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-
-    # cv.imshow('Cinza', gray)
-
-    # blurred = cv.GaussianBlur(gray, (5, 5), 0)
-    # cv.imshow('Borrado', blurred)
-
-    edges = cv.Canny(gray, 100, 200)
-    # cv.imshow('Pontas', edges)
-
-    # dilated = cv.dilate(edges, None, iterations=1)
-    # cv.imshow('Dilatado', dilated)
-
-    # eroded = cv.erode(dilated, None, iterations=1)
-    # cv.imshow('Erodido', eroded)
-
-    # ret, thresh = cv.threshold(gray, 70, 200, cv.THRESH_BINARY)
-    # canny = cv.Canny(gray, 110, 175)
-    
-    # cv.imshow('Thresh', thresh)
-    contours, hierarchies = cv.findContours(edges, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
-    cv.drawContours(blank, contours, -1, (255), 1)
-    # cv.imshow('Contornos', blank)
-
-    sliced_contours = cv.bitwise_and(rs_img, rs_img, mask=blank)
-    # cv.imshow('Fios', sliced_contours)
-    # cv.waitKey(0)
-
-    return sliced_contours
+    return img_rotated
 
 
-def filter_contours(contours):
-    filtered_contours = []
-
-    ## Implementar função para filtrar os contornos
-
-    return filtered_contours if filtered_contours else contours
-
-
-# Exemplo de uso
 if __name__ == "__main__":
     main()
