@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # import io
 import math
 
-from utils import find_images
+from .utils import find_images
 
 
 
@@ -35,20 +35,20 @@ def process_images(images_paths):
 
 def crop_base(img):
     # Imagem RGB
-    # img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     # Imagem HSV
     img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     
     points = find_points(img_hsv)
 
-    # draw_lines(img_rgb, points)
-    # plt.imshow(img_rgb)
-    # plt.savefig('cantosEncontrados.png')
+    draw_lines(img_rgb, points)
+    plt.imshow(img_rgb)
+    plt.savefig('cantosEncontrados.png')
 
     img_rotated = rotate_img(img, points)
 
-    # plt.imshow(cv2.cvtColor(img_rotated, cv2.COLOR_BGR2RGB))
-    # plt.savefig('imagemEndireitada.png')
+    plt.imshow(cv2.cvtColor(img_rotated, cv2.COLOR_BGR2RGB))
+    plt.savefig('imagemEndireitada.png')
 
     img_rotated_hsv = cv2.cvtColor(img_rotated, cv2.COLOR_BGR2HSV)
 
@@ -60,8 +60,8 @@ def crop_base(img):
     x, y, w, h = rect
     cropped_image = img_rotated[y:y+h, x:x+w]
 
-    # plt.imshow(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB))
-    # plt.savefig('imagemRecortada')
+    plt.imshow(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB))
+    plt.savefig('imagemRecortada')
     return cropped_image
 
 
@@ -72,8 +72,8 @@ def find_points(img_hsv, file_name:str='mask.png'):
 
     mask = cv2.inRange(img_hsv, lower_red, upper_red)
     
-    # plt.imshow(mask)
-    # plt.savefig(file_name)
+    plt.imshow(mask)
+    plt.savefig(file_name)
 
     # Encontrar contornos que correspondem à máscara
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
