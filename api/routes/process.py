@@ -4,6 +4,7 @@ from tasks.api_tasks import watch_process, process_images
 from api.celery_config import redis_client
 
 router = APIRouter()
+redis_client.set('image_processing', 'False')
 
 
 @router.get("/process")
