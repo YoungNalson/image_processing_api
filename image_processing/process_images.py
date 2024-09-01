@@ -65,12 +65,17 @@ def crop_base(img):
     return cropped_image
 
 
-def find_points(img_hsv, file_name:str='mask.png'):
-    # Definir o intervalo de cor para o vermelho
-    lower_red = np.array([160, 100, 100])
-    upper_red = np.array([180, 255, 255])
+def find_points(
+        img_hsv, 
+        file_name:str='mask.png', 
+        color_interval1:list=[160, 100, 100], 
+        color_interval2:list=[180, 255, 255]
+    ):
+    # Definir o intervalo de cor
+    lowerb = np.array(color_interval1)
+    upperb = np.array(color_interval2)
 
-    mask = cv2.inRange(img_hsv, lower_red, upper_red)
+    mask = cv2.inRange(img_hsv, lowerb, upperb)
     
     plt.imshow(mask)
     plt.savefig(file_name)
