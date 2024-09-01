@@ -31,6 +31,7 @@ def process_images(images_paths):
     for path in images_paths:
         img = cv2.imread(path)
         base = crop_base(img)
+        chaves = crop_chaves(base)
 
 
 def crop_base(img):
@@ -146,6 +147,53 @@ def rotate_img(img, pontos):
     img_rotated = cv2.warpAffine(img, rotating_matriz, (width, height))
     
     return img_rotated
+
+
+def crop_chaves(base):
+    chaves = {}
+
+    cold_air_chave = base[1340:1550, 520:830]
+    temperature_chave = base[1570:1950, 570:790]
+    on_off_chave = base[1940:2310, 560:780]
+    chaves.update({
+        'cold_air': cold_air_chave,
+        'temperature': temperature_chave,
+        'on_off': on_off_chave
+    })
+
+    plt.imshow(on_off_chave)
+    plt.savefig('chaveTemperatura.png')
+
+    for chave in chaves.keys():
+        crop_soldas(chaves[chave], chave)
+
+    return chaves
+
+
+def crop_soldas(chave, chave_type):
+    if chave_type == 'cold_air':
+        ymin = 50
+        ymax = 150
+        xmin = 0
+        xmax = 75
+    
+    if chave_type == 'temperature':
+        ymin = 30
+        ymax = 110
+        xmin = 50
+        xmax = 170
+    
+    if chave_type == 'on_off':
+        ymin = 30
+        ymax = 110
+        xmin = 50
+        xmax = 170
+    
+    solda = chave[ymin:ymax, xmin:xmax]
+
+    plt.imshow(solda)
+    plt.savefig('solda.png')
+    print('yes')
 
 
 if __name__ == "__main__":
