@@ -2,11 +2,12 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 # from copy import deepcopy
-# import base64
-# import io
+import base64
+import io
 import math
+from PIL import Image
 
-from .utils import find_images
+from utils import find_images
 
 
 
@@ -16,22 +17,30 @@ def main():
 
 
 # Função principal de processamento de imagens
-def process_images(images_paths):
+def process_images(image_json):
     """
     Processa a imagem carregada, dividindo-a em partes e analisando cada parte.
     
     :param images_path: Lista de caminhos das imagens a serem processadas.
     :return: As imagens processadas como um array numpy.
     """
-    if not images_paths:
+    if not image_json:
         raise ValueError("Imagem não encontrada ou caminho inválido.")
     
-    # Carregar as imagens
-    images_paths = sorted(images_paths)
-    for path in images_paths:
-        img = cv2.imread(path)
-        base = crop_base(img)
-        chaves = crop_chaves(base)
+    cut_config = image_json['cut_config']
+    image_base64 = image_json['base64'].split(',')[1]
+    decoded_image = base64.b64decode(image_base64)
+    opened_image = Image.open(io.BytesIO(decoded_image))
+
+    img = np.array(opened_image)
+    if img.shape[-1] == 4:
+        img = cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
+    else:
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+    base = crop_base(img)
+    cuts = make_cuts(base, cut_config)
+    ## Enviar os cortes para a api do isaque
 
 
 def crop_base(img):
@@ -149,25 +158,36 @@ def rotate_img(img, pontos):
     return img_rotated
 
 
-def crop_chaves(base):
-    chaves = {}
+def make_cuts(base, cut_config:dict):
+    cuts = []
 
-    cold_air_chave = base[1340:1550, 520:830]
-    temperature_chave = base[1570:1950, 570:790]
-    on_off_chave = base[1940:2310, 560:780]
-    chaves.update({
-        'cold_air': cold_air_chave,
-        'temperature': temperature_chave,
-        'on_off': on_off_chave
-    })
+    for config in cut_config.items():
+        Ymin = config['yy']
+        Ymax = config['yx']
+        Xmin = config['xx']
+        Xmax = config['xy']
+        cut = base[Ymin:Ymax, Xmin:Xmax]
+        cut = cv2.cvtColor(cut, cv2.COLOR_BGR2RGB)
 
-    plt.imshow(on_off_chave)
-    plt.savefig('chaveTemperatura.png')
+        cuts.append(cut)
 
-    for chave in chaves.keys():
-        crop_soldas(chaves[chave], chave)
 
-    return chaves
+    # cold_air_chave = base[1340:1550, 520:830]
+    # temperature_chave = base[1570:1950, 570:790]
+    # on_off_chave = base[1940:2310, 560:780]
+    # chaves.update({
+    #     'cold_air': cold_air_chave,
+    #     'temperature': temperature_chave,
+    #     'on_off': on_off_chave
+    # })
+
+    # plt.imshow(on_off_chave)
+    # plt.savefig('chaveTemperatura.png')
+
+    # for chave in chaves.keys():
+    #     crop_soldas(chaves[chave], chave)
+
+    return cuts
 
 
 def crop_soldas(chave, chave_type):
