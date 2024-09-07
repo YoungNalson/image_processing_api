@@ -1,19 +1,11 @@
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 # from copy import deepcopy
 import base64
 import io
 import math
 from PIL import Image
-
-from utils import find_images
-
-
-
-def main():
-    images = find_images()
-    results = process_images(images)
 
 
 # Função principal de processamento de imagens
@@ -27,8 +19,8 @@ def process_images(image_json):
     if not image_json:
         raise ValueError("Imagem não encontrada ou caminho inválido.")
     
-    cut_config = image_json['cut_config']
-    image_base64 = image_json['base64'].split(',')[1]
+    items_to_process = image_json['itemsToProcess']
+    image_base64 = image_json['imageBase64'].split(',')[1]
     decoded_image = base64.b64decode(image_base64)
     opened_image = Image.open(io.BytesIO(decoded_image))
 
@@ -39,26 +31,30 @@ def process_images(image_json):
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
     base = crop_base(img)
-    cuts = make_cuts(base, cut_config)
-    ## Enviar os cortes para a api do isaque
+    bounding_boxes = draw_boxes(base, items_to_process)
+    cuts = make_cuts(base, items_to_process)
+    return {
+        "boundingBoxes": bounding_boxes,
+        "processedCuts": cuts,
+    }
 
 
 def crop_base(img):
     # Imagem RGB
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    # img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     # Imagem HSV
     img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     
     points = find_points(img_hsv)
 
-    draw_lines(img_rgb, points)
-    plt.imshow(img_rgb)
-    plt.savefig('cantosEncontrados.png')
+    # draw_lines(img_rgb, points)
+    # plt.imshow(img_rgb)
+    # plt.savefig('cantosEncontrados.png')
 
     img_rotated = rotate_img(img, points)
 
-    plt.imshow(cv2.cvtColor(img_rotated, cv2.COLOR_BGR2RGB))
-    plt.savefig('imagemEndireitada.png')
+    # plt.imshow(cv2.cvtColor(img_rotated, cv2.COLOR_BGR2RGB))
+    # plt.savefig('imagemEndireitada.png')
 
     img_rotated_hsv = cv2.cvtColor(img_rotated, cv2.COLOR_BGR2HSV)
 
@@ -70,8 +66,11 @@ def crop_base(img):
     x, y, w, h = rect
     cropped_image = img_rotated[y:y+h, x:x+w]
 
-    plt.imshow(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB))
-    plt.savefig('imagemRecortada')
+    # plt.imshow(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB))
+    # plt.savefig('imagemRecortada')
+    
+    # cv2.imwrite('imagemRecortada.png', cropped_image)
+    
     return cropped_image
 
 
@@ -87,8 +86,8 @@ def find_points(
 
     mask = cv2.inRange(img_hsv, lowerb, upperb)
     
-    plt.imshow(mask)
-    plt.savefig(file_name)
+    # plt.imshow(mask)
+    # plt.savefig(file_name)
 
     # Encontrar contornos que correspondem à máscara
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -136,6 +135,33 @@ def draw_lines(img_rgb, points):
         cv2.line(img_rgb, points[i], points[(i+1) % 4], (0, 0, 255), 10)
 
 
+def draw_boxes(img, items_to_process):
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    for item in items_to_process:
+        Ymin = item['cut_config']['yx']
+        Ymax = item['cut_config']['yy']
+        Xmin = item['cut_config']['xx']
+        Xmax = item['cut_config']['xy']
+        cv2.rectangle(
+            img_rgb, # imagem
+            (Xmin, Ymin), # ponto 1
+            (Xmin + (Xmax-Xmin), Ymin + (Ymax-Ymin)), # ponto 2
+            (0, 255, 0), # cor
+            6 # espessura da linha
+        )
+        
+        # plt.imshow(img_rgb)
+        # plt.savefig('boxes.png')
+
+    # cv2.imwrite('boxes.png', cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR))
+    
+    _, buffer = cv2.imencode('.png', img_rgb)
+    img_rgb_base64 = 'data:image/png;base64,' + base64.b64encode(buffer).decode()
+    
+    return img_rgb_base64
+
+
 def rotate_img(img, pontos):
     # Pontos da linha de baixo (inferior esquerda e inferior direita)
     ponto_inferior_esquerdo = pontos[1]
@@ -158,63 +184,29 @@ def rotate_img(img, pontos):
     return img_rotated
 
 
-def make_cuts(base, cut_config:dict):
+def make_cuts(base, items_to_process:list):
     cuts = []
 
-    for config in cut_config.items():
-        Ymin = config['yy']
-        Ymax = config['yx']
-        Xmin = config['xx']
-        Xmax = config['xy']
+    for item in items_to_process:
+        Ymin = item['cut_config']['yx']
+        Ymax = item['cut_config']['yy']
+        Xmin = item['cut_config']['xx']
+        Xmax = item['cut_config']['xy']
         cut = base[Ymin:Ymax, Xmin:Xmax]
+        # cv2.imwrite(item['name'] + '.png', cut)
         cut = cv2.cvtColor(cut, cv2.COLOR_BGR2RGB)
+        
+        # plt.imshow(cut)
+        # plt.savefig('chaveTemperatura.png')
+        
+        cut = cut / 255.0
 
-        cuts.append(cut)
-
-
-    # cold_air_chave = base[1340:1550, 520:830]
-    # temperature_chave = base[1570:1950, 570:790]
-    # on_off_chave = base[1940:2310, 560:780]
-    # chaves.update({
-    #     'cold_air': cold_air_chave,
-    #     'temperature': temperature_chave,
-    #     'on_off': on_off_chave
-    # })
-
-    # plt.imshow(on_off_chave)
-    # plt.savefig('chaveTemperatura.png')
-
-    # for chave in chaves.keys():
-    #     crop_soldas(chaves[chave], chave)
+        cuts.append(
+            {
+                "name": item['name'],
+                "type": item['type'],
+                "cut": base64.b64encode(cut.tobytes()).decode()
+            }
+        )
 
     return cuts
-
-
-def crop_soldas(chave, chave_type):
-    if chave_type == 'cold_air':
-        ymin = 50
-        ymax = 150
-        xmin = 0
-        xmax = 75
-    
-    if chave_type == 'temperature':
-        ymin = 30
-        ymax = 110
-        xmin = 50
-        xmax = 170
-    
-    if chave_type == 'on_off':
-        ymin = 30
-        ymax = 110
-        xmin = 50
-        xmax = 170
-    
-    solda = chave[ymin:ymax, xmin:xmax]
-
-    plt.imshow(solda)
-    plt.savefig('solda.png')
-    print('yes')
-
-
-if __name__ == "__main__":
-    main()
