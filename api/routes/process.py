@@ -14,7 +14,7 @@ class ImageReceived(BaseModel):
     dryerId: int
     dryerBaseSize:str
     imageBase64:str
-    itemsToProcess: List[Dict[str, Union[str, dict]]]
+    itemsToProcess: List[Dict[str, Union[str, int, Dict[str, Union[str, int]]]]]
 
 
 @router.post("/process")

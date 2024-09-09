@@ -203,9 +203,10 @@ def make_cuts(base, items_to_process:list):
 
         cuts.append(
             {
+                "id": item['id'],
                 "name": item['name'],
                 "type": item['type'],
-                "cut": base64.b64encode(cut.tobytes()).decode()
+                "cut": cut.tolist()
             }
         )
 
