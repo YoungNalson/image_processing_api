@@ -102,9 +102,15 @@ def find_points(
                 points.append((cX, cY))
     
     # Verificar se encontrou quatro pontos
-    if len(points) == 4:
+    if len(points) < 4:
         # Ordenar pontos para formar um retângulo
-        points = sort_points(points)
+        raise Exception("Could not find the 4 points of the base.")
+    
+    if len(points) > 4:
+        # Ordenar pontos para formar um retângulo
+        raise Exception("Too many points found. Check the marks in the base.")
+
+    points = sort_points(points)
 
     return points
 
