@@ -30,8 +30,20 @@ def process_images(image_json):
     else:
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
-    bounding_boxes = draw_boxes(img, items_to_process)
-    cuts = make_cuts(img, items_to_process)
+    try:
+        bounding_boxes = draw_boxes(img, items_to_process)
+    except:
+        raise Exception("Erro ao desenhar as caixas na imagem. " + 
+                        "Verifique a resolução da imagem e as " +
+                        "configurações dos itens a serem verificados.")
+    
+    try:
+        cuts = make_cuts(img, items_to_process)
+    except:
+        raise Exception("Erro ao cortar a imagem. " + 
+                        "Verifique a resolução da imagem e as " + 
+                        "configurações dos itens a serem verificados.")
+    
     return {
         "boundingBoxes": bounding_boxes,
         "processedCuts": cuts,
