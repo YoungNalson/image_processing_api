@@ -30,9 +30,8 @@ def process_images(image_json):
     else:
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
-    base = crop_base(img)
-    bounding_boxes = draw_boxes(base, items_to_process)
-    cuts = make_cuts(base, items_to_process)
+    bounding_boxes = draw_boxes(img, items_to_process)
+    cuts = make_cuts(img, items_to_process)
     return {
         "boundingBoxes": bounding_boxes,
         "processedCuts": cuts,
