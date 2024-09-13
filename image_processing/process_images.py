@@ -25,10 +25,10 @@ def process_images(image_json):
     opened_image = Image.open(io.BytesIO(decoded_image))
 
     img = np.array(opened_image)
-    # if img.shape[-1] == 4:
-    #     img = cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
-    # else:
-    #     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    if img.shape[-1] == 4:
+        img = cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
+    else:
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
     bounding_boxes = draw_boxes(img, items_to_process)
     cuts = make_cuts(img, items_to_process)
@@ -191,13 +191,18 @@ def rotate_img(img, pontos):
 
 def make_cuts(base, items_to_process:list):
     cuts = []
+    resize_factor = 0.05
+    original_height, original_width = base.shape[:2]
+    new_size = (int(original_height * resize_factor), int(original_width * resize_factor))
+
+    resize_img = cv2.resize(base, new_size)
 
     for item in items_to_process:
-        Ymin = item['cut_config']['yx']
-        Ymax = item['cut_config']['yy']
-        Xmin = item['cut_config']['xx']
-        Xmax = item['cut_config']['xy']
-        cut = base[Ymin:Ymax, Xmin:Xmax]
+        Ymin = int(item['cut_config']['yx'] * resize_factor)
+        Ymax = int(item['cut_config']['yy'] * resize_factor)
+        Xmin = int(item['cut_config']['xx'] * resize_factor)
+        Xmax = int(item['cut_config']['xy'] * resize_factor)
+        cut = resize_img[Ymin:Ymax, Xmin:Xmax]
         # cv2.imwrite(item['name'] + '.png', cut)
         cut = cv2.cvtColor(cut, cv2.COLOR_BGR2RGB)
         
