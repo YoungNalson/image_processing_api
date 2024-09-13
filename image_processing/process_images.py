@@ -20,7 +20,12 @@ def process_images(image_json):
         raise ValueError("Imagem não encontrada ou caminho inválido.")
     
     items_to_process = image_json['itemsToProcess']
-    image_base64 = image_json['imageBase64'].split(',')[1]
+    
+    try:
+        image_base64 = image_json['imageBase64'].split(',')[1]
+    except IndexError:
+        image_base64 = image_json['imageBase64']
+        
     decoded_image = base64.b64decode(image_base64)
     opened_image = Image.open(io.BytesIO(decoded_image))
 
