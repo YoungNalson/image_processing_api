@@ -25,10 +25,10 @@ def process_images(image_json):
     opened_image = Image.open(io.BytesIO(decoded_image))
 
     img = np.array(opened_image)
-    if img.shape[-1] == 4:
-        img = cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
-    else:
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    # if img.shape[-1] == 4:
+    #     img = cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
+    # else:
+    #     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
     bounding_boxes = draw_boxes(img, items_to_process)
     cuts = make_cuts(img, items_to_process)
