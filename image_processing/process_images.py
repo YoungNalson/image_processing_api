@@ -44,7 +44,8 @@ def process_images(image_json):
     
     try:
         cuts = make_cuts(img, items_to_process)
-    except:
+    except Exception as e:
+        print(e)
         raise Exception("Erro ao cortar a imagem. " + 
                         "Verifique a resolução da imagem e as " + 
                         "configurações dos itens a serem verificados.")
@@ -166,22 +167,23 @@ def draw_boxes(img, items_to_process):
         Xmin = item['cut_config']['xx']
         Xmax = item['cut_config']['xy']
         cv2.rectangle(
-            img_rgb, # imagem
-            (Xmin, Ymin), # ponto 1
-            (Xmin + (Xmax-Xmin), Ymin + (Ymax-Ymin)), # ponto 2
-            (0, 255, 0), # cor
-            6 # espessura da linha
+            img_rgb,
+            (Xmin, Ymin),
+            (Xmin + (Xmax-Xmin), Ymin + (Ymax-Ymin)),
+            (0, 255, 0),
+            6
         )
         
         # plt.imshow(img_rgb)
         # plt.savefig('boxes.png')
 
-    # cv2.imwrite('boxes.png', cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR))
+    cv2.imwrite('boxes.png', cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR))
     
     _, buffer = cv2.imencode('.png', img_rgb)
     img_rgb_base64 = 'data:image/png;base64,' + base64.b64encode(buffer).decode()
-    
+
     return img_rgb_base64
+
 
 
 def rotate_img(img, pontos):
@@ -209,31 +211,27 @@ def rotate_img(img, pontos):
 def make_cuts(base, items_to_process:list):
     cuts = []
     resize_factor = 0.05
-    original_height, original_width = base.shape[:2]
-    new_size = (int(original_height * resize_factor), int(original_width * resize_factor))
-
-    resize_img = cv2.resize(base, new_size)
 
     for item in items_to_process:
-        Ymin = int(item['cut_config']['yx'] * resize_factor)
-        Ymax = int(item['cut_config']['yy'] * resize_factor)
-        Xmin = int(item['cut_config']['xx'] * resize_factor)
-        Xmax = int(item['cut_config']['xy'] * resize_factor)
-        cut = resize_img[Ymin:Ymax, Xmin:Xmax]
-        # cv2.imwrite(item['name'] + '.png', cut)
-        cut = cv2.cvtColor(cut, cv2.COLOR_BGR2RGB)
+        Ymin = item['cut_config']['yx']
+        Ymax = item['cut_config']['yy']
+        Xmin = item['cut_config']['xx']
+        Xmax = item['cut_config']['xy']
+
+        cut = base[Ymin:Ymax, Xmin:Xmax]
+        original_height, original_width = cut.shape[:2]
+        new_size = (int(original_height * resize_factor), int(original_width * resize_factor))
         
-        # plt.imshow(cut)
-        # plt.savefig('chaveTemperatura.png')
-        
-        cut = cut / 255.0
+        resized_cut = cv2.resize(cut, new_size)
+        resized_cut = cv2.cvtColor(resized_cut, cv2.COLOR_BGR2RGB)
+        resized_cut = resized_cut / 255.0
 
         cuts.append(
             {
                 "id": item['id'],
                 "name": item['name'],
                 "type": item['type'],
-                "cut": cut.tolist()
+                "cut": resized_cut.tolist()
             }
         )
 
